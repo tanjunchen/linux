@@ -831,8 +831,9 @@ static int map_create(union bpf_attr *attr)
 	if (err < 0)
 		goto free_map;
 
-	atomic64_set(&map->refcnt, 1);
-	atomic64_set(&map->usercnt, 1);
+	// tanjunchen bpf map 创建 
+	atomic64_set(&map->refcnt, 1); // 设置引用计数
+	atomic64_set(&map->usercnt, 1); // 设置引用计数
 	mutex_init(&map->freeze_mutex);
 
 	map->spin_lock_off = -EINVAL;
@@ -913,6 +914,7 @@ struct bpf_map *__bpf_map_get(struct fd f)
 	return f.file->private_data;
 }
 
+// 给 map 增加引用计数
 void bpf_map_inc(struct bpf_map *map)
 {
 	atomic64_inc(&map->refcnt);
@@ -2096,6 +2098,8 @@ static bool is_perfmon_prog_type(enum bpf_prog_type prog_type)
 /* last field in 'union bpf_attr' used by this command */
 #define	BPF_PROG_LOAD_LAST_FIELD attach_prog_fd
 
+// 加载 BPF 程序
+// tanjunchen bpf(BPF_PROG_LOAD) -> sys_bpf() -> SYSCALL_DEFINE3(bpf, ...)：系统调用
 static int bpf_prog_load(union bpf_attr *attr, union bpf_attr __user *uattr)
 {
 	enum bpf_prog_type type = attr->prog_type;
@@ -2186,6 +2190,7 @@ static int bpf_prog_load(union bpf_attr *attr, union bpf_attr __user *uattr)
 	prog->orig_prog = NULL;
 	prog->jited = 0;
 
+	// 引用计数置 1
 	atomic64_set(&prog->aux->refcnt, 1);
 	prog->gpl_compatible = is_gpl ? 1 : 0;
 
@@ -2207,6 +2212,7 @@ static int bpf_prog_load(union bpf_attr *attr, union bpf_attr __user *uattr)
 		goto free_prog;
 
 	/* run eBPF verifier */
+	// 执行 BPF 校验器
 	err = bpf_check(&prog, attr, uattr);
 	if (err < 0)
 		goto free_used_maps;
@@ -4354,6 +4360,7 @@ out_prog_put:
 	return ret;
 }
 
+// tanjunchen 创建 bpf map
 SYSCALL_DEFINE3(bpf, int, cmd, union bpf_attr __user *, uattr, unsigned int, size)
 {
 	union bpf_attr attr;
@@ -4395,7 +4402,7 @@ SYSCALL_DEFINE3(bpf, int, cmd, union bpf_attr __user *, uattr, unsigned int, siz
 	case BPF_MAP_FREEZE:
 		err = map_freeze(&attr);
 		break;
-	case BPF_PROG_LOAD:
+	case BPF_PROG_LOAD: // 加载 BPF 程序
 		err = bpf_prog_load(&attr, uattr);
 		break;
 	case BPF_OBJ_PIN:

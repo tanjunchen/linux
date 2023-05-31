@@ -9909,9 +9909,11 @@ static int resolve_pseudo_ldimm64(struct bpf_verifier_env *env)
 			 * will be used by the valid program until it's unloaded
 			 * and all maps are released in free_used_maps()
 			 */
+			// 增加引用计数
 			bpf_map_inc(map);
 
 			aux->map_index = env->used_map_cnt;
+			// 记录这个程序用到的 map
 			env->used_maps[env->used_map_cnt++] = map;
 
 			if (bpf_map_is_cgroup_storage(map) &&
@@ -11888,6 +11890,7 @@ int bpf_check(struct bpf_prog **prog, union bpf_attr *attr,
 	if (is_priv)
 		env->test_state_freq = attr->prog_flags & BPF_F_TEST_STATE_FREQ;
 
+	// 对程序用到的 map 进行处理
 	if (bpf_prog_is_dev_bound(env->prog->aux)) {
 		ret = bpf_prog_offload_verifier_prep(env->prog);
 		if (ret)

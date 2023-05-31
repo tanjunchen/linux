@@ -59,6 +59,9 @@ static inline __u64 ptr_to_u64(const void *ptr)
 	return (__u64) (unsigned long) ptr;
 }
 
+// 只能在用户态创建，根据是否用户显式创建，可分为用户态程序创建和加载器创建两种方式。
+// Map 创建后具有全局唯一的 id。BPF_MAP_CREATE 系统调用返回的是一个 BPF Map 的文件描述符。
+// 用户态程序创建 bpf Map
 static inline int sys_bpf(enum bpf_cmd cmd, union bpf_attr *attr,
 			  unsigned int size)
 {
@@ -81,6 +84,7 @@ int bpf_create_map_xattr(const struct bpf_create_map_attr *create_attr)
 	union bpf_attr attr;
 
 	memset(&attr, '\0', sizeof(attr));
+	// convert: 'struct bpf_create_map_attr -> struct bpf_attr'
 
 	attr.map_type = create_attr->map_type;
 	attr.key_size = create_attr->key_size;
@@ -124,6 +128,8 @@ int bpf_create_map_node(enum bpf_map_type map_type, const char *name,
 	return bpf_create_map_xattr(&map_attr);
 }
 
+// tanjunchen 创建 BPF map 的调用过程，展示 map 的引用计数（refcnt）是在哪里更新的：
+// bpf_create_map() -> bpf_create_map_xattr() -> sys_bpf() -> SYSCALL_DEFINE3(bpf, ...)：系统调用
 int bpf_create_map(enum bpf_map_type map_type, int key_size,
 		   int value_size, int max_entries, __u32 map_flags)
 {

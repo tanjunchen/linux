@@ -15,7 +15,7 @@
 
 #include <bpf/bpf_helpers.h>
 
-
+// 编译器会创建名字为 maps 的 section，加载器会检查 maps section 下的 map 定义
 struct bpf_map_def SEC("maps") read_count = {
 	.type        = BPF_MAP_TYPE_ARRAY,
 	.key_size    = sizeof(u32), /* class; u32 required */
