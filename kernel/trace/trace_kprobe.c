@@ -1565,6 +1565,7 @@ static int kretprobe_event_define_fields(struct trace_event_call *event_call)
 
 #ifdef CONFIG_PERF_EVENTS
 
+// 观测内核函数（kprobe）和用户空间函数（uprobe）
 /* Kprobe profile handler */
 static int
 kprobe_perf_func(struct trace_kprobe *tk, struct pt_regs *regs)

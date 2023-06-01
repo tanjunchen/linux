@@ -214,6 +214,8 @@ void reuseport_detach_sock(struct sock *sk)
 }
 EXPORT_SYMBOL(reuseport_detach_sock);
 
+// 发布系统：新老进程无损流量切换
+// 加速 socket 查找
 static struct sock *run_bpf_filter(struct sock_reuseport *reuse, u16 socks,
 				   struct bpf_prog *prog, struct sk_buff *skb,
 				   int hdr_len)

@@ -3856,6 +3856,7 @@ int dev_loopback_xmit(struct net *net, struct sock *sk, struct sk_buff *skb)
 }
 EXPORT_SYMBOL(dev_loopback_xmit);
 
+// 对于 egress，将包交给设备队列（device queue）发送之前，执行 BPF 程序。
 #ifdef CONFIG_NET_EGRESS
 static struct sk_buff *
 sch_handle_egress(struct sk_buff *skb, int *ret, struct net_device *dev)
@@ -4731,6 +4732,10 @@ void generic_xdp_tx(struct sk_buff *skb, struct bpf_prog *xdp_prog)
 
 static DEFINE_STATIC_KEY_FALSE(generic_xdp_needed_key);
 
+// XDP 是在网络驱动中实现的，有专门的 TX/RX queue（native 方式）。
+// 对于没有实现 XDP 的驱动，内核中实现了一个称为 “generic XDP” 的 fallback 实现。
+// Native XDP：处理的阶段非常早，在 skb 创建之前，因此性能非常高。
+// Generic XDP：在 skb 创建之后，因此性能比前者差，但功能是一样的。
 int do_xdp_generic(struct bpf_prog *xdp_prog, struct sk_buff *skb)
 {
 	if (xdp_prog) {
@@ -4928,6 +4933,8 @@ int (*br_fdb_test_addr_hook)(struct net_device *dev,
 EXPORT_SYMBOL_GPL(br_fdb_test_addr_hook);
 #endif
 
+// 对于 ingress，通过网络设备的 receive 方法做流量分类，
+// 这个处理位置在网卡驱动处理之后，在内核协议栈（IP 层）处理之前。
 static inline struct sk_buff *
 sch_handle_ingress(struct sk_buff *skb, struct packet_type **pt_prev, int *ret,
 		   struct net_device *orig_dev, bool *another)

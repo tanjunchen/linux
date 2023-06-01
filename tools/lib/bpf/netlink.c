@@ -40,6 +40,9 @@ static int libbpf_netlink_open(__u32 *nl_pid)
 	memset(&sa, 0, sizeof(sa));
 	sa.nl_family = AF_NETLINK;
 
+	// 首先创建一个 netlink 类型的 socket：socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE)
+	// 然后发送一个 NLA_F_NESTED | 43 类型的 netlink 消息，表示这是 XDP message。
+	// 消息中包含 BPF fd, the interface index (ifindex) 等信息。
 	sock = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
 	if (sock < 0)
 		return -errno;

@@ -167,28 +167,57 @@ enum bpf_map_type {
  * programs correspond to /a/ specific kernel which is to be
  * analyzed, and not /a/ specific kernel /and/ all future ones.
  */
+// Kernel 5.10 支持的 BPF 程序类型
+// 每种程序能够使用的 helper 函数可参见：
+// https://github.com/iovisor/bcc/blob/master/docs/kernel-versions.md#program-types
 enum bpf_prog_type {
 	BPF_PROG_TYPE_UNSPEC,
 	BPF_PROG_TYPE_SOCKET_FILTER,
+	// kprobes、tracepoints、perf events
+	// kprobes：对特定函数进行 instrumentation、Tracepoints：内核中的轻量级 hook、Perf events：是这里提到的几种 eBPF 程序的基础。
 	BPF_PROG_TYPE_KPROBE,
+	// BPF 程序 tc 分类器（classifiers）
+	// tc 分类器 tc(8) 命令支持 eBPF，因此能直接将 BPF 程序作为 classifiers 和 actions 加载到 ingress/egress hook 点。
 	BPF_PROG_TYPE_SCHED_CLS,
+	// BPF 程序 tc 执行器（actions）
+	// 使用方式与 BPF_PROG_TYPE_SCHED_CLS 类似，但用作 TC action。
 	BPF_PROG_TYPE_SCHED_ACT,
+	// Instrument 内核代码中的 tracepoints
 	BPF_PROG_TYPE_TRACEPOINT,
+	// 防火墙、四层负载均衡等
+	// 由于 XDP 程序执行时 skb 都还没创建，开销非常低，因此效率非常高。适用于 DDoS 防御、四层负载均衡等场景。
+	// XDP 就是通过 BPF hook 对内核进行运行时编程（run-time programming），但基于内核而不是绕过（bypass）内核。
 	BPF_PROG_TYPE_XDP,
+	// Instrument 软件/硬件 perf 事件
+	// 包括系统调用事件、定时器超时事件、硬件采样事件等。
+	// 硬件事件包括 PMU（processor monitoring unit）事件，它告诉我们已经执行了多少条指令之类的信息。
+	// Perf 事件监控能具体到某个进程、组、处理器，也可以指定采样频率。
 	BPF_PROG_TYPE_PERF_EVENT,
+	// 在 cgroup 级别：放行/丢弃数据包
+	
 	BPF_PROG_TYPE_CGROUP_SKB,
+	// 在一个连接（connection）的生命周期中只执行一次
+	// 在 cgroup 级别：触发 socket 操作时拒绝/放行网络访问
 	BPF_PROG_TYPE_CGROUP_SOCK,
+	// 轻量级隧道类型
+	// 检查入向流量是否需要做解封装（decap）
 	BPF_PROG_TYPE_LWT_IN,
+	// 对出向流量做封装（encap）,加载方式：ip route add
 	BPF_PROG_TYPE_LWT_OUT,
+	// 实现轻量级隧道发送端的 encap/redir 方法
 	BPF_PROG_TYPE_LWT_XMIT,
+	// 在一个连接的生命周期中，在不同地方被多次调用
 	BPF_PROG_TYPE_SOCK_OPS,
 	BPF_PROG_TYPE_SK_SKB,
+	// 设备文件（device file）访问控制
 	BPF_PROG_TYPE_CGROUP_DEVICE,
+	// 
 	BPF_PROG_TYPE_SK_MSG,
 	BPF_PROG_TYPE_RAW_TRACEPOINT,
 	BPF_PROG_TYPE_CGROUP_SOCK_ADDR,
 	BPF_PROG_TYPE_LWT_SEG6LOCAL,
 	BPF_PROG_TYPE_LIRC_MODE2,
+	// 
 	BPF_PROG_TYPE_SK_REUSEPORT,
 	BPF_PROG_TYPE_FLOW_DISSECTOR,
 	BPF_PROG_TYPE_CGROUP_SYSCTL,
@@ -198,10 +227,23 @@ enum bpf_prog_type {
 	BPF_PROG_TYPE_STRUCT_OPS,
 	BPF_PROG_TYPE_EXT,
 	BPF_PROG_TYPE_LSM,
+	// attach 到 network namespace。
 	BPF_PROG_TYPE_SK_LOOKUP,
 };
 
+// BPF 程序类型分类
+// Socket 类型
+// BPF_PROG_TYPE_SOCKET_FILTER、BPF_PROG_TYPE_SOCK_OPS、BPF_PROG_TYPE_SK_SKB、BPF_PROG_TYPE_SK_MSG
+// BPF_PROG_TYPE_SK_REUSEPORT、BPF_PROG_TYPE_SK_LOOKUP
+
+
+// 通过 socket() 系统调用将 BPF 程序 attach 到 hook 点时用到的 BPF 类型
 enum bpf_attach_type {
+	// cgroup BPF 用于在 cgroup 级别对进程、socket、设备文件 （device file）等进行动态控制
+	// 处理资源分配，例如 CPU、网络带宽等。
+	// 系统资源权限控制（allowing or denying）。
+	// 控制访问权限（allow or deny），程序的返回结果只有两种：放行/禁止（导致随后包被丢弃）
+
 	BPF_CGROUP_INET_INGRESS,
 	BPF_CGROUP_INET_EGRESS,
 	BPF_CGROUP_INET_SOCK_CREATE,
@@ -4080,6 +4122,8 @@ union {					\
 /* user accessible mirror of in-kernel sk_buff.
  * new fields can only be added to the end of this structure
  */
+// 是对 struct sk_buff 的用户可访问字段的镜像。
+// BPF 程序中对 struct __sk_buff 字段的访问，将会被 BPF 校验器转换成对相应的 struct sk_buff 字段的访问。
 struct __sk_buff {
 	__u32 len;
 	__u32 pkt_type;
@@ -4260,6 +4304,7 @@ struct bpf_xdp_sock {
  * return codes are reserved for future use. Unknown return codes will
  * result in packet drops and a warning via bpf_warn_invalid_xdp_action().
  */
+// 返回值：enum xdp_action
 enum xdp_action {
 	XDP_ABORTED = 0,
 	XDP_DROP,
@@ -4271,6 +4316,7 @@ enum xdp_action {
 /* user accessible metadata for XDP packet hook
  * new fields must be added to the end of this structure
  */
+// 传入参数：struct xdp_md 
 struct xdp_md {
 	__u32 data;
 	__u32 data_end;
@@ -4488,8 +4534,10 @@ struct bpf_sock_addr {
  * to be converted before use (bpf_ntohl() defined in samples/bpf/bpf_endian.h).
  * New fields can only be added at the end of this structure
  */
+
+// 传入参数： struct bpf_sock_ops*
 struct bpf_sock_ops {
-	__u32 op;
+	__u32 op; // socket 事件类型，就是上面的 BPF_SOCK_OPS
 	union {
 		__u32 args[4];		/* Optionally passed to bpf program */
 		__u32 reply;		/* Returned by bpf program	    */
@@ -4620,22 +4668,30 @@ enum {
 /* List of known BPF sock_ops operators.
  * New entries can only be added at the end
  */
+// BPF_PROG_TYPE_SOCK_OPS 注入点
+
 enum {
 	BPF_SOCK_OPS_VOID,
+	// 初始化 TCP RTO 时调用 BPF 程序
+    // 程序应当返回希望使用的 SYN-RTO 值；-1 表示使用默认值
 	BPF_SOCK_OPS_TIMEOUT_INIT,	/* Should return SYN-RTO value to use or
 					 * -1 if default value should be used
 					 */
+	// BPF 程序应当返回 initial advertized window (in packets)；-1 表示使用默认值				
 	BPF_SOCK_OPS_RWND_INIT,		/* Should return initial advertized
 					 * window (in packets) or -1 if default
 					 * value should be used
 					 */
+	// 主动建连初始化之前 回调 BPF 程序
 	BPF_SOCK_OPS_TCP_CONNECT_CB,	/* Calls BPF program right before an
 					 * active connection is initialized
 					 */
+	// 主动建连 成功之后回调 BPF 程序
 	BPF_SOCK_OPS_ACTIVE_ESTABLISHED_CB,	/* Calls BPF program when an
 						 * active connection is
 						 * established
 						 */
+	// 被动建连 成功之后回调 BPF 程序
 	BPF_SOCK_OPS_PASSIVE_ESTABLISHED_CB,	/* Calls BPF program when a
 						 * passive connection is
 						 * established
@@ -4643,6 +4699,7 @@ enum {
 	BPF_SOCK_OPS_NEEDS_ECN,		/* If connection's congestion control
 					 * needs ECN
 					 */
+	// 获取 base RTT，可能还与拥塞控制算法相关。
 	BPF_SOCK_OPS_BASE_RTT,		/* Get base RTT. The correct value is
 					 * based on the path and may be
 					 * dependent on the congestion control
@@ -4650,21 +4707,25 @@ enum {
 					 * a congestion threshold. RTTs above
 					 * this indicate congestion
 					 */
+	// 触发 RTO（超时重传）时回调 BPF 程序
 	BPF_SOCK_OPS_RTO_CB,		/* Called when an RTO has triggered.
 					 * Arg1: value of icsk_retransmits
 					 * Arg2: value of icsk_rto
 					 * Arg3: whether RTO has expired
 					 */
+	// skb 发生重传之后，回调 BPF 程序		
 	BPF_SOCK_OPS_RETRANS_CB,	/* Called when skb is retransmitted.
 					 * Arg1: sequence number of 1st byte
 					 * Arg2: # segments
 					 * Arg3: return value of
 					 *       tcp_transmit_skb (0 => success)
 					 */
+	// TCP 状态发生变化时，回调 BPF 程序。
 	BPF_SOCK_OPS_STATE_CB,		/* Called when TCP changes state.
 					 * Arg1: old_state
 					 * Arg2: new_state
 					 */
+	// 执行 listen(2) 系统调用，socket 进入 LISTEN 状态之后，回调 BPF 程序
 	BPF_SOCK_OPS_TCP_LISTEN_CB,	/* Called on listen(2), right after
 					 * socket transition to LISTEN state.
 					 */
@@ -4830,6 +4891,10 @@ enum {
 	BPF_DEVCG_DEV_CHAR	= (1ULL << 1),
 };
 
+// 设备文件（device file）访问控制
+// struct bpf_cgroup_dev_ctx
+// access_type：访问操作的类型，例如 mknod/read/write；
+// major 和 minor：主次设备号；
 struct bpf_cgroup_dev_ctx {
 	/* access_type encoded as (BPF_DEVCG_ACC_* << 16) | BPF_DEVCG_DEV_* */
 	__u32 access_type;

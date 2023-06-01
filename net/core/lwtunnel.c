@@ -380,6 +380,8 @@ drop:
 }
 EXPORT_SYMBOL_GPL(lwtunnel_xmit);
 
+// 该函数支持多种封装类型。
+// 加载方式：ip route add
 int lwtunnel_input(struct sk_buff *skb)
 {
 	struct dst_entry *dst = skb_dst(skb);

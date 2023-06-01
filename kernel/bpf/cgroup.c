@@ -984,6 +984,8 @@ int cgroup_bpf_prog_query(const union bpf_attr *attr,
  * attached program was found and if it returned != 1 during execution.
  * Otherwise 0 is returned.
  */
+// 1：放行；
+// 其他任何值：会使 __cgroup_bpf_run_filter_skb() 返回 -EPERM，这会进一步返回给调用方，告诉它们应该丢弃该包。
 int __cgroup_bpf_run_filter_skb(struct sock *sk,
 				struct sk_buff *skb,
 				enum bpf_attach_type type)
@@ -1000,6 +1002,7 @@ int __cgroup_bpf_run_filter_skb(struct sock *sk,
 	if (sk->sk_family != AF_INET && sk->sk_family != AF_INET6)
 		return 0;
 
+	// 获取 socket cgroup 信息
 	cgrp = sock_cgroup_ptr(&sk->sk_cgrp_data);
 	save_sk = skb->sk;
 	skb->sk = sk;

@@ -470,21 +470,29 @@ int __sock_queue_rcv_skb(struct sock *sk, struct sk_buff *skb)
 }
 EXPORT_SYMBOL(__sock_queue_rcv_skb);
 
+// 处理 socket 入向流量，TCP/UDP/ICMP/raw-socket 等协议类型都会执行到这里
 int sock_queue_rcv_skb(struct sock *sk, struct sk_buff *skb)
 {
 	int err;
 
+	// 执行 BPF 代码，这里返回的 err 表示对这个包保留前多少字节（trim）
 	err = sk_filter(sk, skb);
-	if (err)
-		return err;
+	if (err) // 如果字节数大于 0
+		return err; // 跳过接下来的处理逻辑，直接返回到更上层
 
+	// 如果字节数等于 0，继续执行内核正常的 socket receive 逻辑
 	return __sock_queue_rcv_skb(sk, skb);
 }
 EXPORT_SYMBOL(sock_queue_rcv_skb);
 
+// Hook 位置：入向
+// __sk_receive_skb/tcp_v4_rcv->tcp_filter/udp_queue_rcv_one_skb -> sk_filter_trim_cap()
+// 对于 ingress，上述三个函数会分别从 IP/TCP/UDP 处理逻辑里调用到 sk_filter_trim_cap()， 
+// 后者又会调用 BPF_CGROUP_RUN_PROG_INET_INGRESS(sk, skb)。
 int __sk_receive_skb(struct sock *sk, struct sk_buff *skb,
 		     const int nested, unsigned int trim_cap, bool refcounted)
 {
+	// 如果返回值非零，调用方（例如 __sk_receive_skb()）随后会将包丢弃并释放。
 	int rc = NET_RX_SUCCESS;
 
 	if (sk_filter_trim_cap(sk, skb, trim_cap))
@@ -1712,6 +1720,7 @@ static void sk_prot_free(struct proto *prot, struct sock *sk)
  *	@prot: struct proto associated with this new sock instance
  *	@kern: is this to be a kernel socket?
  */
+// 创建 socket 时初始化其 cgroupv2 配置
 struct sock *sk_alloc(struct net *net, int family, gfp_t priority,
 		      struct proto *prot, int kern)
 {
@@ -1729,14 +1738,15 @@ struct sock *sk_alloc(struct net *net, int family, gfp_t priority,
 		sock_lock_init(sk);
 		sk->sk_net_refcnt = kern ? 0 : 1;
 		if (likely(sk->sk_net_refcnt)) {
-			get_net(net);
+			get_net(net); // 网络命名空间
 			sock_inuse_add(net, 1);
 		}
 
 		sock_net_set(sk, net);
 		refcount_set(&sk->sk_wmem_alloc, 1);
-
+		// memory cgroup 信息单独维护
 		mem_cgroup_sk_alloc(sk);
+		// per-socket cgroup 信息，包括了 memory cgroup 之外 该 socket 的 cgroup 信息
 		cgroup_sk_alloc(&sk->sk_cgrp_data);
 		sock_update_classid(&sk->sk_cgrp_data);
 		sock_update_netprioidx(&sk->sk_cgrp_data);

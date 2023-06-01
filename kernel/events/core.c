@@ -9358,6 +9358,8 @@ static int perf_tp_event_match(struct perf_event *event,
 	return 1;
 }
 
+// 相应的 tracepoint 启用并执行到之后，perf_trace_<event_class>() （定义见 include/trace/perf.h） 
+// 调用 perf_trace_run_bpf_submit()，后者通过 trace_call_bpf() 触发 BPF 程序执行。
 void perf_trace_run_bpf_submit(void *raw_data, int size, int rctx,
 			       struct trace_event_call *call, u64 count,
 			       struct pt_regs *regs, struct hlist_head *head,

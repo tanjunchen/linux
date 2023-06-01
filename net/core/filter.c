@@ -117,6 +117,8 @@ EXPORT_SYMBOL_GPL(copy_bpf_fprog_from_user);
  * be accepted or -EPERM if the packet should be tossed.
  *
  */
+// 这里所谓的截断并不是截断原始包，而只是复制一份包的元数据，修改其中的包长字段；
+// 程序本身不会截断或丢弃原始流量，也就是说，对原始流量是只读的（read only）；
 int sk_filter_trim_cap(struct sock *sk, struct sk_buff *skb, unsigned int cap)
 {
 	int err;
