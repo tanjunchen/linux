@@ -2249,6 +2249,29 @@ static inline void bpf_skops_init_skb(struct bpf_sock_ops_kern *skops,
  * program loaded).
  */
 #ifdef CONFIG_BPF
+// 用来执行 sock_ops BPF 程序。
+/**
+两种类型的 sock_ops BPF helper 函数
+bpf_setsockopt() 与标准 Linux setsockopt 类似，但只支持有限一些选项。包括：
+
+SO_RCVBUF
+SO_SNDBUF
+SO_MAX_PACING_RATE
+SO_PRIORITY
+SO_RCVLOWAT
+SO_MARK
+TCP_CONGESTION
+TCP_BPF_IW
+TCP_BPF_SNDCWND_CLAMP
+其中的两个新选项：
+
+TCP_BPF_IW – 设置初始 snd_cwnd。如果这个连接已经发包了，这个会被忽略。
+TCP_BPF_SNDCWND_CLAMP – 设置 socket 的 snd_cwnd_clamp 和 snd_ssthresh
+bpf_getsockopt() 与标准 Linux getsockopt 类似，但目前只支持
+
+TCP_CONGESTION
+Linux 标准方式的缺点：需要改应用代码。
+*/
 static inline int tcp_call_bpf(struct sock *sk, int op, u32 nargs, u32 *args)
 {
 	struct bpf_sock_ops_kern sock_ops;

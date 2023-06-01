@@ -186,6 +186,14 @@ static int synack_opt_len(struct bpf_sock_ops *skops)
 	return CG_OK;
 }
 
+/**
+很多场景都会有解析和修改 TCP header option 的需求，例如在 header 中写入 max delay ack，
+这样接收方就能设置一个更低的 RTO；后文还会用到这个例子。会看到如何在 BPF 中实现。
+实际上这个使用场景 Google 也在 RFC 中提出过其他场景可能跟数据中心或内部通信流量相关，
+例如协商网络速率、选择更合适的 CC 算法
+BPF 程序能对任何 header option 进行修改或写入。
+也就是说没有任何限制，但内核负责检查重复的 option，以及 option 格式是否正确等等。
+*/
 static int write_synack_opt(struct bpf_sock_ops *skops)
 {
 	struct bpf_test_option opt;

@@ -159,6 +159,17 @@ enum bpf_map_type {
 	BPF_MAP_TYPE_INODE_STORAGE,
 };
 
+
+/**
+参考地址：http://arthurchiao.art/blog/bpf-advanced-notes-5-zh/
+
+总结几种 TCP 相关的 BPF 程序类型。按目的划分为三类：
+
+Socket 相关，sock_ops，例如设置 SYN RTO、SYN-ACK RTO。
+TCP 拥塞控制（CC）相关：struct_ops。
+TCP header options 相关：用于在 TCP header option 中插入自定义数据，例如用于验证新算法。
+*/
+
 /* Note that tracing related programs such as
  * BPF_PROG_TYPE_{KPROBE,TRACEPOINT,PERF_EVENT,RAW_TRACEPOINT}
  * are not subject to a stable API since kernel internal data
@@ -4488,12 +4499,36 @@ struct bpf_sock_addr {
  * to be converted before use (bpf_ntohl() defined in samples/bpf/bpf_endian.h).
  * New fields can only be added at the end of this structure
  */
+
+/*
+sock_ops BPF 早在 kernel 4.13 就引入了，当时称为 TCP-BPF（因为此时没有其他与 TCP 相关的 BPF 程序类型），
+是一种通过 BPF 程序拦截 socket 操作，然后动态设置 TCP 参数 的机制。例如，
+
+判断某个 TCP 连接的 destination IP 是否在同数据中心，然后动态设置最佳建连参数；
+设置某些新参数，例如 SYN RTO 和 SYN-ACK RTO，在此之前，这些参数都是在内核编译时就确定的，编译之后就无法再修改； 
+*/
+
+/**
+分为两类。
+
+第一类是 get 操作，返回值就是想获取的某个信息，
+BPF_SOCK_OPS_TIMEOUT_INIT
+BPF_SOCK_OPS_RWND_INIT
+BPF_SOCK_OPS_NEEDS_ECN
+BPF_SOCK_OPS_BASE_RTT
+
+第二类都带 _CB 后缀，表示 sock_ops BPF 程序是从哪里调用过来的，这种程序的目的是修改连接的状态，
+BPF_SOCK_OPS_TCP_CONNECT_CB
+BPF_SOCK_OPS_ACTIVE_ESTABLISHED_CB
+BPF_SOCK_OPS_PASSIVE_ESTABLISHED_CB
+*/
 struct bpf_sock_ops {
 	__u32 op;
 	union {
 		__u32 args[4];		/* Optionally passed to bpf program */
 		__u32 reply;		/* Returned by bpf program	    */
 		__u32 replylong[4];	/* Optionally returned by bpf prog  */
+		// BPF 程序通过其中的 reply 字段返回程序执行结果。replylong 字段是为了以后能支持更长的返回值。
 	};
 	__u32 family;
 	__u32 remote_ip4;	/* Stored in network byte order */

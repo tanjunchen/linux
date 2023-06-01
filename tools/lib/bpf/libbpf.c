@@ -288,6 +288,10 @@ struct bpf_program {
 	__u32 prog_flags;
 };
 
+// TCP 拥塞控制（CC）
+// 加载并启用新 CC 算法
+// 通过 libbpf 加载、通过 bpftool 加载、通过 sysctl 启用、通过 setsockopt() 启用
+
 struct bpf_struct_ops {
 	const char *tname;
 	const struct btf_type *type;

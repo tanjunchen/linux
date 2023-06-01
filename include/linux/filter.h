@@ -1243,6 +1243,8 @@ struct bpf_sock_addr_kern {
 	void *t_ctx;	/* Attach type specific context. */
 };
 
+// struct bpf_sock_ops 中的 op reply replylong 是可读/可写的， 并且直接映射到内核数据结构的种的相应字段；
+// 其他字段都是只读的， 被 BPF 框架映射到对应的内核字段。
 struct bpf_sock_ops_kern {
 	struct	sock *sk;
 	union {
