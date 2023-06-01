@@ -191,10 +191,10 @@ struct pair {
 };
 
 struct {
-	__uint(type, BPF_MAP_TYPE_HASH);
-	__type(key, __be32);
-	__type(value, struct pair);
-	__uint(max_entries, 1024);
+	__uint(type, BPF_MAP_TYPE_HASH); // BPF map 类型
+	__type(key, __be32); // 目的 IP 地址
+	__type(value, struct pair);// 包数和字节数
+	__uint(max_entries, 1024); // 最大 entry 数量
 } hash_map SEC(".maps");
 
 SEC("socket2")
@@ -207,14 +207,15 @@ int bpf_prog2(struct __sk_buff *skb)
 	if (!flow_dissector(skb, &flow))
 		return 0;
 
-	key = flow.dst;
+	key = flow.dst; // 目的 IP 地址
 	value = bpf_map_lookup_elem(&hash_map, &key);
 	if (value) {
+		// 如果已经存在，则更新相应计数
 		__sync_fetch_and_add(&value->packets, 1);
 		__sync_fetch_and_add(&value->bytes, skb->len);
 	} else {
 		struct pair val = {1, skb->len};
-
+		// 否则，新建一个 entry
 		bpf_map_update_elem(&hash_map, &key, &val, BPF_ANY);
 	}
 	return 0;

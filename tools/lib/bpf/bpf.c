@@ -108,6 +108,7 @@ int bpf_create_map_xattr(const struct bpf_create_map_attr *create_attr)
 	return sys_bpf(BPF_MAP_CREATE, &attr, sizeof(attr));
 }
 
+// 带 node 字样的函数或类型都表示感知 NUMA 结构
 int bpf_create_map_node(enum bpf_map_type map_type, const char *name,
 			int key_size, int value_size, int max_entries,
 			__u32 map_flags, int node)
@@ -121,6 +122,7 @@ int bpf_create_map_node(enum bpf_map_type map_type, const char *name,
 	map_attr.value_size = value_size;
 	map_attr.max_entries = max_entries;
 	if (node >= 0) {
+		// NUMA 结构
 		map_attr.numa_node = node;
 		map_attr.map_flags |= BPF_F_NUMA_NODE;
 	}
@@ -159,7 +161,7 @@ int bpf_create_map_name(enum bpf_map_type map_type, const char *name,
 
 	return bpf_create_map_xattr(&map_attr);
 }
-
+// BPF map 是内核对象，为方便从用户空间对 map 进行操作，tools/lib/bpf/bpf.c 封装了一些通用 API。
 int bpf_create_map_in_map_node(enum bpf_map_type map_type, const char *name,
 			       int key_size, int inner_map_fd, int max_entries,
 			       __u32 map_flags, int node)
@@ -182,7 +184,7 @@ int bpf_create_map_in_map_node(enum bpf_map_type map_type, const char *name,
 		attr.map_flags |= BPF_F_NUMA_NODE;
 		attr.numa_node = node;
 	}
-
+	// bpf 系统调用
 	return sys_bpf(BPF_MAP_CREATE, &attr, sizeof(attr));
 }
 

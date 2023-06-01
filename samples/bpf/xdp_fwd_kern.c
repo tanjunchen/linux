@@ -23,10 +23,11 @@
 
 #define IPV6_FLOWINFO_MASK              cpu_to_be32(0x0FFFFFFF)
 
+// 允许通过哪些网卡发送数据的配置信息放到了一个 DEVMAP 中
 struct {
-	__uint(type, BPF_MAP_TYPE_DEVMAP);
-	__uint(key_size, sizeof(int));
-	__uint(value_size, sizeof(int));
+	__uint(type, BPF_MAP_TYPE_DEVMAP); 
+	__uint(key_size, sizeof(int));  // key 表示 ifindex，即网卡 ID
+	__uint(value_size, sizeof(int)); // val 表示是否允许从这个网卡发送（TX）数据
 	__uint(max_entries, 64);
 } xdp_tx_ports SEC(".maps");
 
@@ -118,6 +119,7 @@ static __always_inline int xdp_fwd_flags(struct xdp_md *ctx, u32 flags)
 	 *  setting, and will return BPF_FIB_LKUP_RET_FWD_DISABLED if not
 	 *  enabled this on ingress device.
 	 */
+	// 主逻辑里查询这个 map，判断是否能通过这个网卡发送数据：
 	if (rc == BPF_FIB_LKUP_RET_SUCCESS) {
 		/* Verify egress index has been configured as TX-port.
 		 * (Note: User can still have inserted an egress ifindex that

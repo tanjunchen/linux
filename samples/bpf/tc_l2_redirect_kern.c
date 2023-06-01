@@ -20,6 +20,7 @@
 #define _htonl __builtin_bswap32
 
 #define PIN_GLOBAL_NS		2
+// key 结构体需要 64bit 对其，否则内核校验器会拒绝加载程序
 struct bpf_elf_map {
 	__u32 type;
 	__u32 size_key;

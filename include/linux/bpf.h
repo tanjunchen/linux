@@ -138,15 +138,18 @@ struct bpf_map_memory {
 	struct user_struct *user;
 };
 
+// 
 struct bpf_map {
 	/* The first two cachelines with read-mostly members of which some
 	 * are also accessed in fast-path (e.g. ops, max_entries).
 	 */
+	// 增删查改等操作函数
 	const struct bpf_map_ops *ops ____cacheline_aligned;
 	struct bpf_map *inner_map_meta;
 #ifdef CONFIG_SECURITY
 	void *security;
 #endif
+	// 常规 map 属性
 	enum bpf_map_type map_type;
 	u32 key_size;
 	u32 value_size;
@@ -168,7 +171,10 @@ struct bpf_map {
 	/* The 3rd and 4th cacheline with misc members to avoid false sharing
 	 * particularly with refcounting.
 	 */
+	// 引用计数
+	// refcnt：引用计数，很多类型的 map 是依据 refcnt 是否等于 0 来执行 map GC 的 。
 	atomic64_t refcnt ____cacheline_aligned;
+	// 引用计数
 	atomic64_t usercnt;
 	struct work_struct work;
 	struct mutex freeze_mutex;

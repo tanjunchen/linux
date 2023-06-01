@@ -25,6 +25,22 @@ struct {
 	__uint(max_entries, MAX_CPU);
 } my_map SEC(".maps");
 
+// 常规方式
+/**
+ * struct bpf_map_def SEC("maps") my_map = {
+    .type        = BPF_MAP_TYPE_ARRAY,
+    .key_size    = sizeof(int),
+    .value_size  = sizeof(u64),
+    .max_entries = MAX_CPU,
+};
+*/
+
+/**
+Map pinning：如果使用的是 libbpf 库，
+可以通过 bpf_obj_pin(fd, path) 将 map fd 绑定到文件系统中的指定文件；
+接下来，其他程序获取这个 fd，只需执行 bpf_obj_get(pinned_file)。
+*/
+
 SEC("kprobe/trace_preempt_off")
 int bpf_prog1(struct pt_regs *ctx)
 {

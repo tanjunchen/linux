@@ -127,34 +127,76 @@ enum bpf_cmd {
 	BPF_PROG_BIND_MAP,
 };
 
+// 完整支持的 BPF map 类型
+// 每种 map 引入时的内核版本，可参见 https://github.com/iovisor/bcc/blob/master/docs/kernel-versions.md#tables-aka-maps
+/**
+ * Hash map 的特点：
+key 的长度没有限制，但显然应该大于 0。
+给定 key 查找 value 时，内部通过哈希实现，而非数组索引。
+key/value 是可删除的；作为对比，Array 类型的 map 中，key/value 是不可删除的（但用空值覆盖掉 value ，可实现删除效果）。
+
+原因其实也很简单：哈希表是链表，可以删除链表中的元素；array 是内存空间连续的 数组，
+即使某个 index 处的 value 不用了，这段内存区域还是得留着，不可能将其释放掉。
+*/
 enum bpf_map_type {
 	BPF_MAP_TYPE_UNSPEC,
+	// 初始化时需要指定支持的最大条目数（max_entries）。满了之后继续插入数据时，会报 E2BIG 错误。
 	BPF_MAP_TYPE_HASH,
+	// 最大的特点：key 就是数组中的索引（index）（因此 key 一定是整形），因此无需对 key 进行哈希。
+	// 根据协议类型（proto as key）统计流量：samples/bpf/sockex1
 	BPF_MAP_TYPE_ARRAY,
+	// 程序数组，尾调用 bpf_tail_call() 时会用到。
+	// key：任意整形（因为要作为 array index），具体表示什么由使用者设计（例如表示协议类型 proto）。
+	// value：BPF 程序的文件描述符（fd）。
 	BPF_MAP_TYPE_PROG_ARRAY,
+	// 保存 tracing 结果
+	// BPF 程序将数据存储在 mmap() 共享内存中，用户空间程序可以访问。
 	BPF_MAP_TYPE_PERF_EVENT_ARRAY,
 	BPF_MAP_TYPE_PERCPU_HASH,
 	BPF_MAP_TYPE_PERCPU_ARRAY,
+	// 内核程序能通过 bpf_get_stackid() helper 存储 stack 信息。
+	// 将 stack 信息关联到一个 id，而这个 id 是对当前栈的指令指针地址（instruction pointer address）进行 32-bit hash 得到的。
 	BPF_MAP_TYPE_STACK_TRACE,
+	// 在用户空间存放 cgroup fds，用来检查给定的 skb 是否与 cgroup_array[index] 指向的 cgroup 关联。
+	// cgroup 级别的包过滤（拒绝/放行）、cgroup 级别的进程过滤（权限控制等）
 	BPF_MAP_TYPE_CGROUP_ARRAY,
+	// 普通 hash map 的问题是有大小限制，超过最大数量后无法再插入了。LRU map 可以避免这个问题，
+	// 如果 map 满了，再插入时它会自动将最久未被使用（least recently used）的 entry 从 map 中移除。
 	BPF_MAP_TYPE_LRU_HASH,
 	BPF_MAP_TYPE_LRU_PERCPU_HASH,
 	BPF_MAP_TYPE_LPM_TRIE,
 	BPF_MAP_TYPE_ARRAY_OF_MAPS,
 	BPF_MAP_TYPE_HASH_OF_MAPS,
+	// 功能与 sockmap 类似，但用于 XDP 场景，在 bpf_redirect() 时触发。
+	// 存放 XDP 配置信息：
+	// 对于 TC BPF 程序，配置信息放到普通的 hash 或 array map 里就行了。
+	// 但对于 XDP 程序来说，由于它们开始执行的位置非常靠前，此时大部分网络基础设施它们都是用不了的。
+	// 因此引入了一些专门针对 XDP 的基础设施，例如这里的 DEVMAP（对应 TC 场景 下的普通 BPF MAP）。
+	// XDP redirection
+
 	BPF_MAP_TYPE_DEVMAP,
+	// 主要用于 socket redirection：将 sockets 信息插入到 map，
+	// 后面执行到 bpf_sockmap_redirect() 时，用 map 里的信息触发重定向。
 	BPF_MAP_TYPE_SOCKMAP,
+	// 使用场景：XDP 中将包重定向到指定 CPU
 	BPF_MAP_TYPE_CPUMAP,
+	// 都是 XDP map，都可用于 XDP socket 重定向，与 DEVMAP 有什么区别？
 	BPF_MAP_TYPE_XSKMAP,
+	// XDP 重定向
 	BPF_MAP_TYPE_SOCKHASH,
+	// cgroup 内所有 BPF 程序的共享存储
 	BPF_MAP_TYPE_CGROUP_STORAGE,
+	// 配合 BPF_PROG_TYPE_SK_REUSEPORT 类型的 BPF 程序使用，加速 socket 查找。
+	// 配合 _SK_REUSEPORT 类型 BPF 程序，加速 socket 查找
 	BPF_MAP_TYPE_REUSEPORT_SOCKARRAY,
 	BPF_MAP_TYPE_PERCPU_CGROUP_STORAGE,
 	BPF_MAP_TYPE_QUEUE,
 	BPF_MAP_TYPE_STACK,
+	// per-socket 存储空间
 	BPF_MAP_TYPE_SK_STORAGE,
 	BPF_MAP_TYPE_DEVMAP_HASH,
 	BPF_MAP_TYPE_STRUCT_OPS,
+	// 更高效、保证事件顺序地往用户空间发送数据
 	BPF_MAP_TYPE_RINGBUF,
 	BPF_MAP_TYPE_INODE_STORAGE,
 };
