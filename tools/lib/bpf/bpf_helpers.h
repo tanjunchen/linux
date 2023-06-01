@@ -14,6 +14,54 @@
 #define __type(name, val) typeof(val) *name
 #define __array(name, val) typeof(val) *name[]
 
+// 调试 BPF 程序
+// 打印日志大法
+// bpf_printk("tcp_v4_connect latency_us: %u", latency_us); kernel 5.2+
+// bpf_trace_printk()
+// 使用限制：
+// 最多只能带 3 个参数（这是因为 eBPF helpers 最多只能带 5 个参数，前面 fmt 和 fmt_size 已经占了两个了）；
+// 使用该函数的代码必须是 GPL 兼容的；
+// 前面已经提到，格式字符串支持的类型有限。
+
+
+// 用 BPF 程序 trace 另一个 BPF 程序
+// BPF trampoline 是 内核函数和 BPF 程序之间、BPF 程序和其他 BPF 程序之间的桥梁（更多介绍见附录）。 
+// 使用场景之一是 tracing 其他 BPF 程序，例如 XDP 程序。 
+// 现在能向任何网络类型的 BPF 程序 attach 类似 fentry/fexit 的 BPF 程序，
+// 因此能够看到 XDP、TC、LWT、cgroup 等任何类型 BPF 程序中包的进进出出，
+// 而不会影 响到这些程序的执行，大大降低了基于 BPF 的网络排障难度。
+// BPF trampoline 其他使用场景：
+// fentry/fexit BPF 程序：功能与 kprobe/kretprobe 类似，但性能更好，几乎没有性能开销（practically zero overhead）；
+// 动态链接 BPF 程序（dynamicly link BPF programs）。
+// 在 tracing、networking、cgroup BPF 程序中，是比 prog array 和 prog link list 更加通用的机制。
+// 在很多情况下，可直接作为基于 bpf_tail_call 程序链的一种替代方案。
+// kernel 5.5+
+
+// 设置断点，单步调试
+// 参见 http://arthurchiao.art/blog/linux-socket-filtering-aka-bpf-zh/
+
+/**
+fentry/fexit 相比 kprobe/kretprobe 的优势
+性能更好。
+
+数据中心中的一些真实 tracing 场景显示， 某些关键的内核函数（例如 tcp_retransmit_skb）有 2 个甚至更多永远活跃的 kprobes， 其他一些函数同时有 kprobe and kretprobe。
+
+所以，最大化内核代码和 BPF 程序的执行速度就非常有必要。因此 在每个新程序 attach 时或者 detach 时，BPF trampoline 都会重新生成，以保证最高性能。 （另外在设计上，从 trampoline detach BPF 程序不会失败。）
+
+能拿到的信息更多。
+
+fentry BPF 程序能拿到内核函数参数， 而
+fexit BPF 程序除了能拿到函数参数，还能拿到函数返回值；而 kretprobe 只能拿到返回结果。
+kprobe BPF 程序通常将函数参数记录到一个 map 中，然后 kretprobe 从 map 中 拿出参数，并和返回值一起做一些分析处理。fexit BPF 程序加速了这个典型的使用场景。
+
+可用性更好。
+
+和普通 C 程序一样，直接对指针参数解引用， 不再需要各种繁琐的 probe read helpers 了。
+
+限制：fentry/fexit BPF 程序需要更高的内核版本（5.5+）才能支持。
+*/
+
+// 这是内核 libbpf 库提供的一个宏：kernel 5.2+ 
 /* Helper macro to print out debug messages */
 #define bpf_printk(fmt, ...)				\
 ({							\
