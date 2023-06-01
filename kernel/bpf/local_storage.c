@@ -18,6 +18,9 @@ DEFINE_PER_CPU(struct bpf_cgroup_storage*, bpf_cgroup_storage[MAX_BPF_CGROUP_STO
 #define LOCAL_STORAGE_CREATE_FLAG_MASK					\
 	(BPF_F_NUMA_NODE | BPF_F_ACCESS_MASK)
 
+// struct bpf_cgroup_storage_map：cgroup storage map 定义
+// 与 hash map 类型，这里定义了一个新结构体来表示 cgroup storage map，
+// 这个结构体 将标准 bpf map 嵌套到结构体中作为一个字段：
 struct bpf_cgroup_storage_map {
 	struct bpf_map map;
 
@@ -283,6 +286,7 @@ enoent:
 	return -ENOENT;
 }
 
+// 创建 map：struct bpf_map *cgroup_storage_map_alloc(union bpf_attr *attr)
 static struct bpf_map *cgroup_storage_map_alloc(union bpf_attr *attr)
 {
 	int numa_node = bpf_map_attr_numa_node(attr);
@@ -322,6 +326,7 @@ static struct bpf_map *cgroup_storage_map_alloc(union bpf_attr *attr)
 	bpf_map_charge_move(&map->map.memory, &mem);
 
 	/* copy mandatory map attributes */
+	// 初始化（复制）map 元数据字段
 	bpf_map_init_from_attr(&map->map, attr);
 
 	spin_lock_init(&map->lock);
@@ -493,6 +498,17 @@ static size_t bpf_cgroup_storage_calculate_size(struct bpf_map *map, u32 *pages)
 	return size;
 }
 
+/**
+ * 一个 cgroup 内的所有 BPF 程序组织成一个链表 struct bpf_prog_list，
+ * 这些程序共用一组 cgroup storage（按类型组织成数 组）。
+ * 在将 BPF 程序 attach 到 cgroup 时，会有如下的调用栈：
+__cgroup_bpf_attach
+  |-bpf_cgroup_storages_alloc(storage, prog ? : link->link.prog)
+      |-for_each_cgroup_storage_type(stype) {
+          storages[stype] = bpf_cgroup_storage_alloc(prog, stype);
+        }
+*/
+// 初始化指定类型的 cgroup storage：struct bpf_cgroup_storage *bpf_cgroup_storage_alloc()
 struct bpf_cgroup_storage *bpf_cgroup_storage_alloc(struct bpf_prog *prog,
 					enum bpf_cgroup_storage_type stype)
 {

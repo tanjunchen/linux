@@ -129,7 +129,7 @@ static int dev_map_init_map(struct bpf_dtab *dtab, union bpf_attr *attr)
 
 
 	bpf_map_init_from_attr(&dtab->map, attr);
-
+	// 功能与 sockmap 类似，但用于 XDP 场景，在 bpf_redirect() 时触发。
 	if (attr->map_type == BPF_MAP_TYPE_DEVMAP_HASH) {
 		dtab->n_buckets = roundup_pow_of_two(dtab->map.max_entries);
 

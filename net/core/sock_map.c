@@ -826,6 +826,7 @@ static const struct bpf_iter_seq_info sock_map_iter_seq_info = {
 };
 
 static int sock_map_btf_id;
+// Socket Maps 实现是在 net/core/sock_map.c，而其他的实现都是在 kernel/bpf/ 目录下
 const struct bpf_map_ops sock_map_ops = {
 	.map_meta_equal		= bpf_map_meta_equal,
 	.map_alloc		= sock_map_alloc,
@@ -1438,6 +1439,7 @@ static const struct bpf_iter_seq_info sock_hash_iter_seq_info = {
 };
 
 static int sock_hash_map_btf_id;
+// 前面的都是实现在 kernel/bpf/ 目录下，而这个的实现是在 net/core/sock_map.c，
 const struct bpf_map_ops sock_hash_ops = {
 	.map_meta_equal		= bpf_map_meta_equal,
 	.map_alloc		= sock_hash_alloc,

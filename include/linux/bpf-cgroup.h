@@ -57,7 +57,7 @@ struct bpf_cgroup_link {
 	struct cgroup *cgroup;
 	enum bpf_attach_type type;
 };
-
+// 到每个 cgroup 的 BPF 程序组成一个链表
 struct bpf_prog_list {
 	struct list_head node;
 	struct bpf_prog *prog;
@@ -68,6 +68,7 @@ struct bpf_prog_list {
 struct bpf_prog_array;
 
 struct cgroup_bpf {
+	// 这个 cgroup 内的有效 BPF 程序
 	/* array of effective progs in this cgroup */
 	struct bpf_prog_array __rcu *effective[MAX_BPF_ATTACH_TYPE];
 
@@ -76,6 +77,7 @@ struct cgroup_bpf {
 	 * have either zero or one element
 	 * when BPF_F_ALLOW_MULTI the list can have up to BPF_CGROUP_MAX_PROGS
 	 */
+	// attach 到这个 cgroup 的 BPF 程序
 	struct list_head progs[MAX_BPF_ATTACH_TYPE];
 	u32 flags[MAX_BPF_ATTACH_TYPE];
 

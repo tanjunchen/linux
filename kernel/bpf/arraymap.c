@@ -78,6 +78,8 @@ int array_map_alloc_check(union bpf_attr *attr)
 	return 0;
 }
 
+// 相比于 hash map，array map 的实现就简单多了，因为 key 就是数组 index，所以map 的增删查改都是数组操作。
+// 创建 Map
 static struct bpf_map *array_map_alloc(union bpf_attr *attr)
 {
 	bool percpu = attr->map_type == BPF_MAP_TYPE_PERCPU_ARRAY;
@@ -110,7 +112,7 @@ static struct bpf_map *array_map_alloc(union bpf_attr *attr)
 		if (max_entries < attr->max_entries)
 			return ERR_PTR(-E2BIG);
 	}
-
+	// 内存要 page-aligned
 	array_size = sizeof(*array);
 	if (percpu) {
 		array_size += (u64) max_entries * sizeof(void *);
@@ -130,7 +132,8 @@ static struct bpf_map *array_map_alloc(union bpf_attr *attr)
 	cost = array_size;
 	if (percpu)
 		cost += (u64)attr->max_entries * elem_size * num_possible_cpus();
-
+	
+	// 确保内存不会溢出
 	ret = bpf_map_charge_init(&mem, cost);
 	if (ret < 0)
 		return ERR_PTR(ret);
@@ -172,9 +175,11 @@ static struct bpf_map *array_map_alloc(union bpf_attr *attr)
 }
 
 /* Called from syscall or from eBPF program */
+// 查询 map：void *array_map_lookup_elem()
 static void *array_map_lookup_elem(struct bpf_map *map, void *key)
 {
 	struct bpf_array *array = container_of(map, struct bpf_array, map);
+	// 直接将 key 转换成 index
 	u32 index = *(u32 *)key;
 
 	if (unlikely(index >= array->map.max_entries))
@@ -1058,6 +1063,8 @@ static void prog_array_map_free(struct bpf_map *map)
  * and map_meta_equal is not implemented.
  */
 static int prog_array_map_btf_id;
+
+// 这种类型的 array 存放的是 BPF 程序的文件描述符（fd），在尾调用时使用。
 const struct bpf_map_ops prog_array_map_ops = {
 	.map_alloc_check = fd_array_map_alloc_check,
 	.map_alloc = prog_array_map_alloc,
